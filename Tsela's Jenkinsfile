@@ -1,35 +1,55 @@
 node{
-  def mavenHome = tool name: 'maven3.9.1'
- stage('1.CodeClone'){
-    git credentialsId: 'githubtoken', url: 'https://github.com/Tselaclass31/maven-web-app'
+    
+    def mavenHome = '/var/lib/jenkins/tools/hudson.tasks.Maven_MavenInstallation/maven3.9.1/bin/mvn'
+    stage('1CloneCode')
+    {
+     sh "echo  'cloning code from git repository' "
+     git 'https://github.com/tseladev/maven-web-application'
+}
+   
+   stage('2TestandBuild')
+   {
+      
+       sh "${mavenHome} package"
    }
- stage('2MavenBuild'){
-   sh "${mavenHome}/bin/mvn package"
- }
- stage('3codeQuality'){
-   sh "${mavenHome}/bin/mvn sonar:sonar"
- }
-  stage('4UploadArtifacts'){
-   sh "${mavenHome}/bin/mvn deploy"
- }
-   stage('5deploy2UAT'){
-  deploy adapters: [tomcat9(credentialsId: 'tomcatcred', path: '', url: 'http://34.229.70.193:8177/')], contextPath: null, war: 'target/*.war'
- }
- stage('6Manualapproval'){
-    sh "echo 'ready for review' "
-    timeout(time:5, unit:'MINUTES') {
-    input message: 'Application ready for deployment, Please review and approve'
-      }
-  }
-    stage('7deploy2Prod'){
-   deploy adapters: [tomcat9(credentialsId: 'tomcatcred', path: '', url: 'http://100.26.217.86:8080/')], contextPath: null, war: 'target/*war'
- }
-  stage('8emailNotify'){
-    emailext body: '''Hello Team,
-
-Build is done.
-
-LANDMARKTECH''', recipientProviders: [developers(), contributor(), upstreamDevelopers()], subject: 'Build Status', to: 'mylandmarktech@gmail.com'
-  }
-
+    
+    
+    
+    stage('3CodeQA')
+    {
+        sh "${mavenHome} sonar:sonar"
+        
+        //jacoco maximumBranchCoverage: '80', maximumClassCoverage: '80', maximumComplexityCoverage: '5', maximumLineCoverage: '0', maximumMethodCoverage: '80', minimumBranchCoverage: '80', minimumClassCoverage: '80', minimumComplexityCoverage: '5', minimumLineCoverage: '80', minimumMethodCoverage: '0'"
+    }
+   
+   stage('4UploadArtifacts')
+    {
+        sh "${mavenHome} deploy"
+    }
+    
+    stage('5DeploytoUAT')
+    {
+      deploy adapters: [tomcat9(credentialsId: 'tomcatcred', path: '', url: 'http://54.160.90.232:8177/')], contextPath: null, onFailure: false, war: 'target/*.war'
+    }
+    
+    stage('6Manualapproval')
+    {
+        sh "echo 'app ready for deployment, please review' "
+        timeout(time:2, unit:'MINUTES')
+        {
+            input message: 'Please review and approve this app, as it is ready for deployment.'}
+    }
+    
+    
+    stage('7DeploytoPROD')
+    {
+      deploy adapters: [tomcat9(credentialsId: 'tomcatcred', path: '', url: 'http://54.160.90.232:8177/')], contextPath: null, onFailure: false, war: 'target/*.war'
+    }
+    
+    stage('8Emailnotification')
+    {
+     emailext body: '''Hello Team,
+Build is done''', recipientProviders: [developers(), contributor(), buildUser()], subject: 'RE:scripted pipeline project', to: 'orighoyeo@gmail.com'
+    }
+    
 }
